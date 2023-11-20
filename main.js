@@ -11,27 +11,8 @@ puppeteer.use(pluginStealth())
 const readFile = util.promisify(fs.readFile);
 process.setMaxListeners(Infinity);
 
-//TODO: Seperate logger into own file
-const logger = winston.createLogger({
-    format: winston.format.combine(
-        winston.format.timestamp(),
-        winston.format.json(),
-        winston.format.printf((info) => {
-            return JSON.stringify({
-                timestamp: info.timestamp,
-                level: info.level,
-                tab: info.tab,
-                message: info.message
-            });
-        })
-    ),
-    transports: [
-        new winston.transports.Console(),
-        new winston.transports.File({
-            filename: 'glasto.log'
-        })
-    ]
-})
+// Import the logger from log.js
+const logger = require('./log');
 
 
 /*
@@ -41,7 +22,7 @@ To-do
 High priority:
 
 Low priority:
-    - Extract inner text from actual glastonbury page using same method so we can match better. The 2019 glasto page exists on the selenium page. 
+    - Extract inner text from actual glastonbury page using same method so we can match better. The 2019 glasto page exists on the selenium page.
     - Add randomness to refresh time
 Other:
     - It would be nice to scale this so it's not just maxing out one device. How though? Possibly containerize and give each container its own VPN
@@ -232,8 +213,8 @@ class Tab {
         logger.info("Spawning new tab")
         this.browser = await puppeteer.launch({
             headless: false,
-            args: ["--disable-gpu", '--no-sandbox', 
-            '--disable-setuid-sandbox', 
+            args: ["--disable-gpu", '--no-sandbox',
+            '--disable-setuid-sandbox',
             '--disable-dev-shm-usage'
             ]
         });
