@@ -1,4 +1,8 @@
 # Glastonbury Ticket Helper
+
+## 2024 Glastonbury
+It worked! 
+
 ## 2023 Glastonbury
 It worked! 
 
