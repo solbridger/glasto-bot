@@ -1,4 +1,6 @@
+// Logger configuration
 const logger = require('./log');
+// Tab class for managing individual browser tabs
 const Tab = require('./tab');
 
 class Puppets {
