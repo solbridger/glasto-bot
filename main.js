@@ -1,220 +1,17 @@
 #!/usr/bin/env node
 
-const winston = require('winston');
-const argv = require('yargs').argv;
 const readline = require('readline');
+const yargs = require('yargs');
 const fs = require('fs');
 const util = require('util');
-const puppeteer = require('puppeteer-extra');
-const pluginStealth = require('puppeteer-extra-plugin-stealth');
-puppeteer.use(pluginStealth());
-const readFile = util.promisify(fs.readFile);
-process.setMaxListeners(Infinity);
-
-// Import the logger from log.js
+// Puppets Custom class
+const Puppets = require('./puppets');
+// Logger configuration
 const logger = require('./log');
 
-class Puppets {
-    constructor(url, rateLimitPerMinute, registrationPageInnerText) {
-        this.tabs = [];
-        this.url = url;
-        this.refreshRateInMs = (60 / rateLimitPerMinute) * 1000;
-        this.registrationPageInnerText = registrationPageInnerText;
-        this.paused = false;
-        this.similarityThreshold = 80;
-        this.lastHighScorer = -1;
-    }
+const argv = yargs.argv;
+const readFile = util.promisify(fs.readFile);
 
-    setPaused(paused) {
-        if (paused) {
-            logger.info('Pausing operation. Tabs will finish their current page load.');
-        } else {
-            logger.info('Resuming operation.');
-        }
-        this.paused = paused;
-    }
-
-    getPaused() {
-        return this.paused;
-    }
-
-    async initializeTabs(tabQuantity) {
-        this.tabs = [];
-        for (let i = 0; i < tabQuantity; i++) {
-            let tab = new Tab(this.url);
-            await tab.initialiseTab();
-            this.tabs.push(tab);
-        }
-    }
-
-    async restartTab(tabIndex) {
-        await this.tabs[tabIndex].close();
-        let tab = new Tab(this.url);
-        this.tabs[tabIndex] = tab;
-        await this.tabs[tabIndex].initialiseTab();
-    }
-
-    async closeTabs() {
-        for (let i = 0; i < this.tabs.length; i++) {
-            await this.tabs[i].close();
-        }
-    }
-
-    calculateSimilarity(retrievedText, desiredText) {
-        const retrievedTextTokens = retrievedText.replace(/(\r\n|\n|\r)/gm, '').toLowerCase().split(' ');
-        const desiredTextTokens = desiredText.replace(/(\r\n|\n|\r)/gm, '').toLowerCase().split(' ');
-        let countOfMatchingWords = 0;
-
-        for (let i = 0; i < desiredTextTokens.length; i++) {
-            if (retrievedTextTokens.includes(desiredTextTokens[i])) {
-                countOfMatchingWords++;
-            }
-        }
-
-        const score = (countOfMatchingWords / desiredTextTokens.length) * 100;
-        return score;
-    }
-
-    async getHighestScoringTabIndex() {
-        let highestScorer = null;
-        for (let i = 0; i < this.tabs.length; i++) {
-            if (highestScorer == null) {
-                highestScorer = i;
-                continue;
-            }
-            if (await this.tabs[i].getSimilarityScore() > await this.tabs[highestScorer].getSimilarityScore()) {
-                highestScorer = i;
-            }
-        }
-        return highestScorer;
-    }
-
-    async loadPagesAtRate() {
-        while (true) {
-            for (let i = 0; i < this.tabs.length; i++) {
-                while (this.paused === true) {
-                    await this.sleep(10);
-                }
-                if (i !== await this.getHighestScoringTabIndex() || await this.tabs[i].getSimilarityScore() === -1) {
-                    if (await this.tabs[i].getReady() === true) {
-                        logger.info({ tab: i, message: 'Loading page' });
-                        this.tabs[i].loadPage().then(async page => {
-                            logger.info({ tab: i, message: `Loaded page in ${Date.now() - this.tabs[i].getStartTime()}ms` });
-                            await this.tabs[i].getInnerHtmlTextOfAllElements().then(async pageInnerHtmlText => {
-                                const similarityScore = await this.calculateSimilarity(pageInnerHtmlText, this.registrationPageInnerText);
-                                await this.tabs[i].setSimilarityScore(similarityScore);
-                                logger.info({ tab: i, message: `${similarityScore.toFixed(2)}% similarity found` });
-
-                                if (similarityScore > this.similarityThreshold) {
-                                    this.paused = true;
-                                    logger.info({ tab: i, message: `Paused operation as page with > ${this.similarityThreshold}% found` });
-                                }
-                                const highestScoringTab = await this.getHighestScoringTabIndex();
-                                if (highestScoringTab !== this.lastHighScorer) {
-                                    this.lastHighScorer = highestScoringTab;
-                                    await this.tabs[highestScoringTab].bringToFront();
-                                }
-                                await this.tabs[i].setReady(true);
-                            });
-                        }).catch(async error => {
-                            logger.error({ tab: i, message: error });
-                            await this.tabs[i].setReady(true);
-                        });
-
-                        const finishTime = Date.now();
-                        if (finishTime - this.tabs[i].getStartTime() < this.refreshRateInMs) {
-                            await this.sleep(this.refreshRateInMs - (finishTime - this.tabs[i].getStartTime()));
-                        }
-                    } else {
-                        await this.sleep(10);
-                    }
-                }
-            }
-        }
-    }
-
-    sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-}
-
-class Tab {
-    constructor(url) {
-        this.url = url;
-        this.page = null;
-        this.browser = null;
-        this.innerHtmlText = null;
-        this.similarityScore = -1;
-        this.ready = false;
-        this.startTime = null;
-    }
-
-    getReady() {
-        return this.ready;
-    }
-
-    setReady(ready) {
-        this.ready = ready;
-    }
-
-    getSimilarityScore() {
-        return this.similarityScore;
-    }
-
-    getStartTime() {
-        return this.startTime;
-    }
-
-    setSimilarityScore(similarityScore) {
-        this.similarityScore = similarityScore;
-    }
-
-    async bringToFront() {
-        await this.page.bringToFront();
-    }
-
-    async initialiseTab() {
-        logger.info('Spawning new tab');
-        this.browser = await puppeteer.launch({
-            headless: false,
-            args: ['--disable-gpu', '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-        });
-        const pages = await this.browser.pages();
-        this.page = pages.pop();
-        this.ready = true;
-    }
-
-    async close() {
-        await this.browser.close();
-        return await this.page.close();
-    }
-
-    async loadPage() {
-        this.startTime = Date.now();
-        await this.setReady(false);
-        return await this.page.goto(this.url, {
-            waitUntil: 'networkidle2',
-            timeout: 30000
-        });
-    }
-
-    async getInnerHtmlTextOfAllElements() {
-        let innerHtmlTextOfAllElements = '';
-        const options = await this.page.$$('body *');
-        for (const option of options) {
-            const label = await this.page.evaluate(el => el.innerText, option);
-            if (label !== undefined && label.length > 0) {
-                innerHtmlTextOfAllElements += label.trim() + ' ';
-            }
-        }
-        return innerHtmlTextOfAllElements;
-    }
-
-    async evaluateSelector(selector) {
-        const result = await this.page.evaluate(selector);
-        return result || '';
-    }
-}
 
 function parseArgs() {
     if (!(argv['site'] && argv['rate-limit'] && argv['max-tabs'])) {
@@ -225,18 +22,20 @@ function parseArgs() {
 }
 
 async function readFileAsString(filePath) {
-    return await readFile(filePath);
+    try {
+        const data = await readFile(filePath, 'utf8');
+        return data;
+    } catch (error) {
+        logger.error(`Error reading file: ${error.message}`);
+        throw error;
+    }
 }
 
 async function getRegistrationPageInnerText() {
     if (argv['test'] && argv['test'] !== 'false') {
-        return await readFileAsString('resources/test.txt').then(data => {
-            return data.toString();
-        });
+        return await readFileAsString('resources/test.txt');
     } else {
-        return await readFileAsString('resources/live.txt').then(data => {
-            return data.toString();
-        });
+        return await readFileAsString('resources/live.txt');
     }
 }
 
@@ -245,11 +44,16 @@ async function run() {
     const registrationPageInnerText = await getRegistrationPageInnerText();
     const tabs = new Puppets(argv['site'], argv['rate-limit'], registrationPageInnerText);
 
+    // Pause/resume by pressing enter
     readline.emitKeypressEvents(process.stdin);
     process.stdin.on('keypress', (str, key) => {
         if (key.ctrl && key.name === 'c') {
-            tabs.closeTabs();
-            process.exit(0);
+            tabs.closeTabs().then(() => {
+                process.exit(0);
+            }).catch(error => {
+                logger.error(`Error closing tabs: ${error.message}`);
+                process.exit(1);
+            });
         } else if (key.name === 'enter') {
             tabs.setPaused(!tabs.getPaused());
         }
