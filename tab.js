@@ -44,11 +44,12 @@ class Tab {
         "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
+        "--enable-experimental-web-platform-features",
       ],
     });
     const pages = await this.browser.pages();
     this.page = pages.pop();
-    await this.page.waitFor(Math.random() * 1500 + 1000); // Random delay
+    await this.page.waitFor(Math.random() * 1500); // Random delay
     await this.page.setUserAgent(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     );

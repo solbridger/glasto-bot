@@ -32,12 +32,32 @@ class Puppets {
   async initializeTabs(tabQuantity) {
     this.tabs = [];
     for (let i = 0; i < tabQuantity; i++) {
-      let tab = new Tab(this.url);
-      try {
-        await tab.initialiseTab();
-        this.tabs.push(tab);
-      } catch (error) {
-        logger.error({ tab: i, message: error });
+      let retries = 3;
+      let delay = 1000; // Start with a 1-second delay
+
+      while (retries > 0) {
+        try {
+          await this.sleep(delay); // Add delay before each initialization attempt
+          let tab = new Tab(this.url);
+          await tab.initialiseTab();
+          this.tabs.push(tab);
+          logger.info({ tab: i, message: "Tab initialized successfully" });
+          break; // Success, exit the retry loop
+        } catch (error) {
+          retries -= 1;
+          if (retries === 0) {
+            logger.error({
+              tab: i,
+              message: `Failed to initialize tab after 3 attempts: ${error}`,
+            });
+          } else {
+            logger.warn({
+              tab: i,
+              message: `Tab initialization failed, retrying... (${retries} attempts left)`,
+            });
+            delay *= 2; // Exponential backoff
+          }
+        }
       }
     }
   }

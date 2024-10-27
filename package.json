@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node main.js --site=\"https://glasto-test-site-s2uq.vercel.app/\" --rate-limit=55 --max-tabs=2 --test",
+    "test": "node main.js --site=\"https://glasto-test-site-2025.vercel.app/\" --rate-limit=55 --max-tabs=15 --test",
     "start": "node main.js --site=\"https://glastonbury.seetickets.com/content/extras\" --rate-limit=55 --max-tabs=15"
   },
   "author": "",
