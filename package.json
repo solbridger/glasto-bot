@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node main.js --site=\"https://glasto-test-site-s2uq.vercel.app/\" --rate-limit=55 --max-tabs=2 --test",
+    "start": "node main.js --site=\"https://glastonbury.seetickets.com/content/extras\" --rate-limit=55 --max-tabs=15"
   },
   "author": "",
   "license": "ISC",
