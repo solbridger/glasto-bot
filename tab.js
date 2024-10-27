@@ -1,7 +1,6 @@
 const puppeteer = require("puppeteer-extra");
 const pluginStealth = require("puppeteer-extra-plugin-stealth");
 puppeteer.use(pluginStealth());
-// Logger configuration
 const logger = require("./log");
 
 class Tab {
@@ -49,15 +48,23 @@ class Tab {
     });
     const pages = await this.browser.pages();
     this.page = pages.pop();
-    await this.page.waitFor(Math.random() * 1500); // Random delay
+
+    // Add a random delay to prevent the server detecting the bot
+    await this.page.waitFor(Math.random() * 1500);
+
+    // Add a normal looking user agent to prevent the server detecting the bot
     await this.page.setUserAgent(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     );
+
+    // Add a fake webdriver property to prevent the server detecting the bot
     await this.page.evaluateOnNewDocument(() => {
       Object.defineProperty(navigator, "webdriver", {
         get: () => undefined,
       });
     });
+
+    // Add some normal looking hardware details to prevent the server detecting the bot
     await this.page.evaluateOnNewDocument(() => {
       Object.defineProperty(navigator, "hardwareConcurrency", {
         get: () => Math.floor(Math.random() * 8) + 2,
@@ -66,7 +73,10 @@ class Tab {
         get: () => Math.floor(Math.random() * 32) + 2,
       });
     });
-    await this.page.mouse.move(Math.random() * 100, Math.random() * 100); // Random mouse move
+
+    // Do a random mouse move to prevent the server detecting the bot
+    await this.page.mouse.move(Math.random() * 100, Math.random() * 100);
+
     this.ready = true;
   }
 

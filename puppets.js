@@ -10,7 +10,7 @@ class Puppets {
     this.refreshRateInMs = (60 / rateLimitPerMinute) * 1000;
     this.registrationPageInnerText = registrationPageInnerText;
     this.paused = false;
-    this.similarityThreshold = 80;
+    this.similarityThreshold = 75;
     this.lastHighScorer = -1;
   }
 
@@ -33,16 +33,18 @@ class Puppets {
     this.tabs = [];
     for (let i = 0; i < tabQuantity; i++) {
       let retries = 3;
-      let delay = 1000; // Start with a 1-second delay
+      let delay = 1000;
 
+      // Implements an exponential backoff retry when initializing tabs as I
+      // have found that spawning them too quickly can cause frequent crashes
       while (retries > 0) {
         try {
-          await this.sleep(delay); // Add delay before each initialization attempt
+          await this.sleep(delay);
           let tab = new Tab(this.url);
           await tab.initialiseTab();
           this.tabs.push(tab);
           logger.info({ tab: i, message: "Tab initialized successfully" });
-          break; // Success, exit the retry loop
+          break;
         } catch (error) {
           retries -= 1;
           if (retries === 0) {

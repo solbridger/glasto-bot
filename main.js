@@ -4,9 +4,7 @@ const readline = require("readline");
 const yargs = require("yargs");
 const fs = require("fs");
 const util = require("util");
-// Puppets Custom class
 const Puppets = require("./puppets");
-// Logger configuration
 const logger = require("./log");
 
 const argv = yargs.argv;

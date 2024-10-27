@@ -1,34 +1,46 @@
 # Glastonbury Ticket Helper
 
-## 2024 Glastonbury
+A fork of [glasto-helper](https://github.com/JackOHara/glasto-helper) which was
+built to successfully get Glastonbury tickets in 2023 and 2024.
 
-It worked!
+This updated version builds upon the original script and adds a few
+improvements:
 
-## 2023 Glastonbury
+- Bumped the similarity threshold to 75%
+- Improved error handling and logging of page crash errors
+- Improved error handling of spawning too many tabs during the initialisation
+  phase using an exponential backoff retry mechanism
+- Updated `live.txt` and `test.txt` to include more accurate text for the 2025
+  sale page based on the 2024 sale page
+- Added `npm run` scripts to make it easier to run the scripts
+- Linting fixes.
 
-It worked!
-
-## 2019 Glastonbury
-
-I did not get glasto tickets.
-I ran the bot for Thursday coach tickets. The site kept crashing and pages timed out. Still,I eventually got through. I entered our registrations but I couldn't pick bus tickets due to an error on the page, this seemed to happen to a lot of people on twitter.
-I fixed the errors and made a few good improvements over the weekend. I ran it on two laptops then on Sunday. I got through on both. It froze up after submitting payment. This seemed to be a common problem on twitter once again. I waited til the 10 mins on ticket lock was over and submitted on the other page. It was too late however. Sold out.
-
----
+## 2025 Glastonbury Coach Sale
 
 ## Usage
 
-This app launches chrome via puppeteer. It opens a number of browsers set by the user. It will then iterate through each browser and load the set URL in a tab. It will only begin loading the page on the next browser tab when a certain amount of time has passed so it does not surpass the set rate limit (60 a minute on glastonbury site).
+This app launches chrome via puppeteer. It opens a number of browsers set by the
+user. It will then iterate through each browser and load the set URL in a tab.
+It will only begin loading the page on the next browser tab when a certain
+amount of time has passed so it does not surpass the set rate limit (60 a minute
+on glastonbury site).
 
-After each page has loads it calculates a similarity rating by comparing the text on the loaded page to the text in `resources/live.txt` . It is using the inner text of all elements within the body of the returned page. The browser will then automatically switch to the tab with the highest similarity rating. This tab will not be reloaded until another tab beats its similarity rating.
+After each page has loads it calculates a similarity rating by comparing the
+text on the loaded page to the text in `resources/live.txt` . It is using the
+inner text of all elements within the body of the returned page. The browser
+will then automatically switch to the tab with the highest similarity rating.
+This tab will not be reloaded until another tab beats its similarity rating.
 
-You can pause by pressing the enter key on the command line. It should automatically stop when the reg page loads.
+You can pause by pressing the enter key on the command line. It should
+automatically stop when the reg page loads.
 
 `--site` : URL
 
 `--rate-limit` : rate limit per minute
 
-`--max-tabs` : the number of tabs to use. The more the better. A tab will reload after the iteration of loading tabs has looped back around to it. So more tabs means more time for a page to load.
+`--max-tabs` : the number of tabs to use. The more the better. A tab will reload
+after the iteration of loading tabs has looped back around to it. So more tabs
+means more time for a page to load.
 
 `--test` : Will use `resources/test.txt` for comparison. For use with test site.
 
@@ -41,26 +53,34 @@ npm i
 Example run command:
 
 ```
+npm run start
+```
+
+This executes the following command:
+
+```
 node main.js --site="https://glastonbury.seetickets.com" --rate-limit=55 --max-tabs=15
 ```
 
 ## Testing
 
-Test site from https://github.com/thomasms/testsites
+For testing, I am hitting a mock site I created using CRA hosted on Vercel. The
+app is available at https://glasto-test-site-2025.vercel.app/. The website text
+content is all based on the 2024 Glastonbury ticket sale page.
+
+The test site has a random number generator which simulates rendering the sale
+page when `Math.random()` is greater than `0.995`, which is about 1 in 200
+attempts. Given the refresh rate of the main script, this should run simulate
+getting through to the payment page in about 3-4 minutes on average.
+
+To run the test:
 
 ```
-cd test_site
-npm start
+npm run test
 ```
 
-Add test flag in run command:
+This executes the following command:
 
 ```
-node main.js --site="https://glasto-test-site.vercel.app/" --rate-limit=55 --max-tabs=15 --test
+node main.js --site="https://glasto-test-site-2025.vercel.app/" --rate-limit=55 --max-tabs=15 --test
 ```
-
-When it loads the 20th page it pretends it is in. Runs on localhost:3000
-
-### What next?
-
-Scalability. How could this scale? It's currently close to maxing out the potential for one device. Not sure how to do this. I think being able to deploy to a few instances, they would need to use a VPN to avoid the IP being identified as being in the cloud providers IP range. Would need some way to get the most similar tab back to the user so details could be entered. Feeding back results and allowing use to select a tab, then tunnel the port back to the user app. Complex. Pass the session and vpn used back? How could this be done simpler? Is it ethical to scale?
