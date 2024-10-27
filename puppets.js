@@ -63,10 +63,39 @@ class Puppets {
   }
 
   async restartTab(tabIndex) {
-    await this.tabs[tabIndex].close();
-    let tab = new Tab(this.url);
-    this.tabs[tabIndex] = tab;
-    await this.tabs[tabIndex].initialiseTab();
+    try {
+      await this.tabs[tabIndex].close();
+    } catch (error) {
+      logger.warn({
+        tab: tabIndex,
+        message: `Error closing tab: ${error.message}`,
+      });
+    }
+
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        let tab = new Tab(this.url);
+        await tab.initialiseTab();
+        this.tabs[tabIndex] = tab;
+        logger.info({ tab: tabIndex, message: "Tab restarted successfully" });
+        return;
+      } catch (error) {
+        retries--;
+        if (retries === 0) {
+          logger.error({
+            tab: tabIndex,
+            message: `Failed to restart tab after 3 attempts: ${error.message}`,
+          });
+        } else {
+          logger.warn({
+            tab: tabIndex,
+            message: `Tab restart failed, retrying... (${retries} attempts left)`,
+          });
+          await this.sleep(1000 * (4 - retries)); // Increasing delay between retries
+        }
+      }
+    }
   }
 
   async closeTabs() {
@@ -125,50 +154,59 @@ class Puppets {
         ) {
           if ((await this.tabs[i].getReady()) === true) {
             logger.info({ tab: i, message: "Loading page" });
-            this.tabs[i]
-              .loadPage()
-              .then(async (page) => {
-                logger.info({
-                  tab: i,
-                  message: `Loaded page in ${
-                    Date.now() - this.tabs[i].getStartTime()
-                  }ms`,
-                });
-                await this.tabs[i]
-                  .getInnerHtmlTextOfAllElements()
-                  .then(async (pageInnerHtmlText) => {
-                    const similarityScore = await this.calculateSimilarity(
-                      pageInnerHtmlText,
-                      this.registrationPageInnerText
-                    );
-                    await this.tabs[i].setSimilarityScore(similarityScore);
+            try {
+              const page = await this.tabs[i].loadPage();
+              logger.info({
+                tab: i,
+                message: `Loaded page in ${
+                  Date.now() - this.tabs[i].getStartTime()
+                }ms`,
+              });
+              await this.tabs[i]
+                .getInnerHtmlTextOfAllElements()
+                .then(async (pageInnerHtmlText) => {
+                  const similarityScore = await this.calculateSimilarity(
+                    pageInnerHtmlText,
+                    this.registrationPageInnerText
+                  );
+                  await this.tabs[i].setSimilarityScore(similarityScore);
+                  logger.info({
+                    tab: i,
+                    message: `${similarityScore.toFixed(2)}% similarity found`,
+                  });
+
+                  if (similarityScore > this.similarityThreshold) {
+                    this.paused = true;
                     logger.info({
                       tab: i,
-                      message: `${similarityScore.toFixed(
-                        2
-                      )}% similarity found`,
+                      message: `Paused operation as page with > ${this.similarityThreshold}% found`,
                     });
-
-                    if (similarityScore > this.similarityThreshold) {
-                      this.paused = true;
-                      logger.info({
-                        tab: i,
-                        message: `Paused operation as page with > ${this.similarityThreshold}% found`,
-                      });
-                    }
-                    const highestScoringTab =
-                      await this.getHighestScoringTabIndex();
-                    if (highestScoringTab !== this.lastHighScorer) {
-                      this.lastHighScorer = highestScoringTab;
-                      await this.tabs[highestScoringTab].bringToFront();
-                    }
-                    await this.tabs[i].setReady(true);
-                  });
-              })
-              .catch(async (error) => {
-                logger.error({ tab: i, message: error });
-                await this.tabs[i].setReady(true);
-              });
+                  }
+                  const highestScoringTab =
+                    await this.getHighestScoringTabIndex();
+                  if (highestScoringTab !== this.lastHighScorer) {
+                    this.lastHighScorer = highestScoringTab;
+                    await this.tabs[highestScoringTab].bringToFront();
+                  }
+                  await this.tabs[i].setReady(true);
+                });
+            } catch (error) {
+              if (error.message === "Page crashed!") {
+                logger.error({
+                  tab: i,
+                  message: "Page crashed, restarting tab",
+                });
+                await this.restartTab(i);
+                continue;
+              } else {
+                logger.error({
+                  tab: i,
+                  message: `Error loading page: ${error.message}`,
+                });
+              }
+            } finally {
+              await this.tabs[i].setReady(true);
+            }
 
             const finishTime = Date.now();
             if (
