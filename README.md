@@ -17,6 +17,8 @@ improvements:
 
 ## 2025 Glastonbury Coach Sale
 
+`<PUT RESULTS IN THIS SECTION>`
+
 ## Usage
 
 This app launches chrome via puppeteer. It opens a number of browsers set by the
@@ -46,6 +48,10 @@ means more time for a page to load.
 
 ## To run
 
+Prequisites: `Node v20.X`
+
+Install deps
+
 ```
 npm i
 ```
@@ -61,6 +67,18 @@ This executes the following command:
 ```
 node main.js --site="https://glastonbury.seetickets.com" --rate-limit=55 --max-tabs=15
 ```
+
+### On the day
+
+On the day, if you have obtain the exact link for the ticket page (e.g. https://glastonbury.seetickets.com/event/glastonbury-2024-deposits/worthy-farm/2500000) then
+all you need to do is update the `start` command in the `package.json` file under the `scripts` section. Simply update the `--site=` value
+to be the more accurate link that was found. This will help get closer to the registration page.
+
+Note that it takes 1-2 minutes for all the browsers to spin up and go to the URL.
+
+Also the terminal has two command shortcuts:
+- `ctrl + c` this will immediately cancel the script (DON'T DO THIS, THIS IS ONLY FOR THE END WHEN THE BUYING PROCESS IS OVER TO TERMINATE THE BROWSERS)
+- `enter` if a browser is successful in getting through, you can press `enter` to continue the script in the other 14. However it is probably recommended to only do that after you have successfully purhaced your first 6 and want to start the script again
 
 ## Testing
 
