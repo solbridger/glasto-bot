@@ -38,13 +38,14 @@ class Tab {
     logger.info("Spawning new tab");
     this.browser = await puppeteer.launch({
       headless: false,
+      executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
       args: [
         "--disable-gpu",
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
         "--enable-experimental-web-platform-features",
+        "--disable-infobars"
       ],
+      ignoreDefaultArgs: ['--enable-automation']
     });
     const pages = await this.browser.pages();
     this.page = pages.pop();
@@ -54,13 +55,19 @@ class Tab {
 
     // Add a normal looking user agent to prevent the server detecting the bot
     await this.page.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.6778.70 Safari/537.36"
     );
 
     // Add a fake webdriver property to prevent the server detecting the bot
     await this.page.evaluateOnNewDocument(() => {
       Object.defineProperty(navigator, "webdriver", {
-        get: () => undefined,
+        get: () => false
+      });
+      Object.defineProperty(navigator, 'plugins', {
+        get: () => [1, 2, 3, 4, 5]
+      });
+      Object.defineProperty(navigator, 'languages', {
+        get: () => ['en-UK', 'en']
       });
     });
 
