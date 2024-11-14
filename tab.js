@@ -2,6 +2,7 @@ const puppeteer = require("puppeteer-extra");
 const pluginStealth = require("puppeteer-extra-plugin-stealth");
 puppeteer.use(pluginStealth());
 const logger = require("./log");
+const { CHROME_PATH } = require('./constants');
 
 class Tab {
   constructor(url) {
@@ -38,7 +39,7 @@ class Tab {
     logger.info("Spawning new tab");
     this.browser = await puppeteer.launch({
       headless: false,
-      executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      executablePath: CHROME_PATH,
       args: [
         "--disable-gpu",
         "--disable-dev-shm-usage",
